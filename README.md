@@ -12,11 +12,11 @@ So, let's start here to use **cMinor v2**.
 
 ## 1. First things to do
 
-The most stable version of cMinor v2 will be stored in [this](https://gitlab.emse.fr/francesco.antoniazzi/cminor-emse) repository, at _master_ branch.
+The most stable version of cMinor v2 will be stored in [this](https://github.com/fr4ncidir/cMinorV2.git) repository, at _master_ branch.
 So, the first thing to do is
 
 ```
-$ git clone https://gitlab.emse.fr/francesco.antoniazzi/cminor-emse.git
+$ git clone https://github.com/fr4ncidir/cMinorV2.git
 ```
 
 The second thing that would be wise to do is to create a Python3 virtual environment. This is not compulsory, but yet highly recommended. This is usually done this way
