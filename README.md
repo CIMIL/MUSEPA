@@ -115,7 +115,7 @@ COAP POST
 Host: coap://localhost/sparql/update?format=ttl
 
 Payload:
-@prefix : <http://cMinor/Example#>
+@prefix : <http://cMinor/Example#>.
 :subject :predicate :object.
 ```
 
@@ -195,6 +195,13 @@ If you want to make an update:
 
 ```
 $ python3 cCoap.py -a coap://localhost/sparql/update -p "PREFIX : <http://cMinor/Example#> INSERT DATA {:sub :pred :obj}" --verb POST
+```
+
+
+If you want to make an update with a turtle file:
+
+```
+$ python3 cCoap.py -a coap://localhost/sparql/update?format=ttl -p "@prefix : <http://cMinor/Example#>. :subject :predicate :object." --verb POST
 ```
 
 If you want to make a subscription request:
