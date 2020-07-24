@@ -18,7 +18,7 @@ logging.basicConfig(format="%(levelname)s   %(asctime)-15s %(filename)s[%(lineno
 
 class Prefixes():
     """This class includes the utilities needed when the MUSEPA --prefixes option is called"""
-    def __init__(self, path_to_file):
+    def __init__(self, path_to_file=""):
         self._prefix_dict = {}
         self._ttl = ""
         self._sparql = ""

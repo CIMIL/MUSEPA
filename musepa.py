@@ -27,7 +27,7 @@ from prefix import Prefixes
 logger = logging.getLogger(__name__)
 
 rdf_endpoint = None
-prefix_container = None
+prefix_container = Prefixes()
 
 # This global variable will act as storage of information about the
 # currently running subscriptions. The dictionary here will be formatted as
@@ -244,7 +244,9 @@ def musepa(a4="default", a6="default", port=5683,  # custom ip:port address for 
         defaults to asyncio.new_event_loop()
     """
     global subscription_store
+    global prefix_container
     subscription_store = {}
+    prefix_container = Prefixes()
     logFormat = "%(levelname)s   %(asctime)-15s %(filename)s[%(lineno)d] : %(message)s"
     logging.basicConfig(level=logging.INFO, format=logFormat, filename="./musepa_log.log")
     logging.warning(subscription_store)

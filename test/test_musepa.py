@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-#  test_cminor.py
+#  test_musepa.py
 #
 #  Copyright (c) 2020
 #  Francesco ANTONIAZZI     <francesco.antoniazzi@emse.fr>
@@ -16,12 +16,12 @@ import asyncio
 from aiocoap import CONTENT, CHANGED, CREATED, POST, DELETED
 from aiocoap import BAD_OPTION, BAD_REQUEST, Context, Message, GET
 from threading import Thread
-from cminor import cminor
+from musepa import musepa
 from cCoap import coapCall, coapUnobserve
 from endpoint import AVAILABLE_ENDPOINTS
 from time import sleep
 
-CMINOR_BASE_URL = "coap://127.0.0.1/{}"
+MUSEPA_BASE_URL = "coap://127.0.0.1/{}"
 
 logFormat = "%(levelname)s   %(asctime)-15s %(filename)s[%(lineno)d] : %(message)s"
 logging.basicConfig(level=logging.INFO, format=logFormat)
@@ -29,78 +29,78 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(scope="module", autouse=True, params=AVAILABLE_ENDPOINTS)
-def cMinor(request):
-    logger.info("Starting cMinor...")
+def musepa_fixture(request):
+    logger.info("Starting MUSEPA...")
     loop = asyncio.new_event_loop()
     thread = Thread(
-        target=cminor, kwargs={"endpoint": request.param, "event_loop": loop})
+        target=musepa, kwargs={"endpoint": request.param, "event_loop": loop})
     thread.daemon = True
     thread.start()
 
     sleep(1)
     yield thread
-    logger.info("Teardown cMinor")
+    logger.info("Teardown MUSEPA")
     loop.stop()
     sleep(1)
 
 
-class Test4cMinor:
+class Test4musepa:
     def test_info(self):
         logger.info("Test info request...")
-        assert coapCall(CMINOR_BASE_URL.format("info")).code == CONTENT
+        assert coapCall(MUSEPA_BASE_URL.format("info")).code == CONTENT
 
 # -------------------  Test Query  --------------------------------------#
 #
     def test_query_no_payload(self):
-        assert coapCall(CMINOR_BASE_URL.format("sparql/query")).code == BAD_OPTION
+        assert coapCall(MUSEPA_BASE_URL.format("sparql/query")).code == BAD_OPTION
 
     def test_query_sparql(self):
         logger.info("Test good sparql request")
         assert coapCall(
-            CMINOR_BASE_URL.format("sparql/query"),
+            MUSEPA_BASE_URL.format("sparql/query"),
             payload="SELECT * WHERE {?a ?b ?c}").code == CONTENT
         logger.info("Test bad sparql request")
         assert coapCall(
-            CMINOR_BASE_URL.format("sparql/query"),
+            MUSEPA_BASE_URL.format("sparql/query"),
             payload="SELECT * WHERE ?a ?b ?c").code == BAD_REQUEST
 
 # -------------------  Test Update  --------------------------------------#
 #
     def test_update_no_payload(self):
-        assert coapCall(CMINOR_BASE_URL.format("sparql/update"), verb="POST").code == BAD_OPTION
+        assert coapCall(MUSEPA_BASE_URL.format("sparql/update"), verb="POST").code == BAD_OPTION
 
     def test_update_sparql(self):
         # clearing the RDF store, and adding a triple
         assert coapCall(
-            CMINOR_BASE_URL.format("sparql/update"), verb="POST",
+            MUSEPA_BASE_URL.format("sparql/update"), verb="POST",
             payload="prefix : <http://test.org/> DELETE {?a ?b ?c} INSERT {:s :p :o} WHERE { OPTIONAL{?a ?b ?c} }").code == CHANGED
 
         logger.info("Checking if triples successfully added...")
         check = coapCall(
-            CMINOR_BASE_URL.format("sparql/query"),
+            MUSEPA_BASE_URL.format("sparql/query"),
             payload="SELECT (COUNT(?s) AS ?triples) WHERE { ?s ?p ?o }")
         assert int(json.loads(check.payload.decode())["results"]["bindings"][0]["triples"]["value"]) == 1
 
         # whenever sparql is wrong...
         logger.info("test bad sparql update...")
         assert coapCall(
-            CMINOR_BASE_URL.format("sparql/update"), verb="POST",
+            MUSEPA_BASE_URL.format("sparql/update"), verb="POST",
             payload="DELETE ?a ?b ?c WHERE ?a ?b ?c").code == BAD_REQUEST
 
     def test_update_file(self):
         # clearing the RDF store, and adding a triple
         assert coapCall(
-            CMINOR_BASE_URL.format("sparql/update"), verb="POST",
+            MUSEPA_BASE_URL.format("sparql/update"), verb="POST",
             payload="DELETE {?a ?b ?c} WHERE {?a ?b ?c}").code == CHANGED
 
         assert coapCall(
-            CMINOR_BASE_URL.format("sparql/update?format=ttl"), 
+            MUSEPA_BASE_URL.format("sparql/update?format=ttl"), 
             verb="POST",
             payload="@prefix : <http://test.org/>. :a :b :c.").code == CHANGED
 
         logger.info("Checking if triples successfully added...")
         check = coapCall(
-            CMINOR_BASE_URL.format("sparql/query"),
+            MUSEPA_BASE_URL.format("sparql/query"),
             payload="SELECT (COUNT(?s) AS ?triples) WHERE { ?s ?p ?o }")
         assert int(json.loads(check.payload.decode())["results"]["bindings"][0]["triples"]["value"]) == 1
 
@@ -109,14 +109,14 @@ class Test4cMinor:
     def test_subscribe(self):
         # Here we clear the RDF store for this test
         assert coapCall(
-            CMINOR_BASE_URL.format("sparql/update"),
+            MUSEPA_BASE_URL.format("sparql/update"),
             verb="POST",
             payload="DELETE WHERE {?a ?b ?c}", loop=asyncio.get_event_loop()).code == CHANGED
 
         # Here we create the subscription
         logger.info("Test good POST sparql Subscription")
         response = coapCall(
-            CMINOR_BASE_URL.format("sparql/subscription"), verb="POST",
+            MUSEPA_BASE_URL.format("sparql/subscription"), verb="POST",
             payload="SELECT ?s ?p ?o WHERE { ?s ?p ?o }")
         logger.warning(response.payload.decode())
         assert response.code == CREATED
@@ -165,7 +165,7 @@ class Test4cMinor:
                         remote_request.observation.cancel()
 
             # The observation instanciates the call...
-            observation_task = asyncio.create_task(call(CMINOR_BASE_URL.format(response.payload.decode())))
+            observation_task = asyncio.create_task(call(MUSEPA_BASE_URL.format(response.payload.decode())))
             # ... waits for the call to finish
             logger.info("Waiting for end_of_observation_setup")
             await end_of_observation_setup.wait()
@@ -174,7 +174,7 @@ class Test4cMinor:
             update = Message(
                 code=POST,
                 payload="INSERT DATA {<http://a> <http://b> <http://c>}".encode(),
-                uri=CMINOR_BASE_URL.format("sparql/update"))
+                uri=MUSEPA_BASE_URL.format("sparql/update"))
             ctx = await Context.create_client_context()
             update_response = await ctx.request(update).response
             logging.debug(update_response)
@@ -191,9 +191,9 @@ class Test4cMinor:
         ctx = asyncio.get_event_loop().run_until_complete(observation())
 
         # Check unsubscription as well once the job is finished
-        assert coapUnobserve(CMINOR_BASE_URL.format(response.payload.decode()),
+        assert coapUnobserve(MUSEPA_BASE_URL.format(response.payload.decode()),
                              context=ctx).code == DELETED
 
     def test_Subscription_no_payload(self):
         logger.info("Test sparql POST Subscription No payload")
-        assert coapCall(CMINOR_BASE_URL.format("sparql/subscription"), verb="POST").code == BAD_OPTION
+        assert coapCall(MUSEPA_BASE_URL.format("sparql/subscription"), verb="POST").code == BAD_OPTION
