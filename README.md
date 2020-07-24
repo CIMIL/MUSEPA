@@ -217,6 +217,26 @@ $ python3 cCoap.py -a coap://localhost/11354c8e688bcd6f6da34c6293be8cac -o
 
 If you need to create your own MUSEPA client, you will probably start by having a look to the cCoap.py source code.
 
+## The `--prefixes` option
+By reading this file, you probably noticed that each time we had to send a request to MUSEPA, it was necessary to send all the needed prefixes.
+MUSEPA allows to avoid this by calling the `--prefixes` option.
+
+First of all, you have to create a file. Let's consider that the file is `{path}\my_prefix_file`.
+_It must be filled as if it was a .ttl file_, and the 'unnamed prefix' is not allowed (i.e., the prefix that is just ':'). Here's an example:
+```
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+```
+You can then call MUSEPA like this:
+```
+$ python musepa.py --prefixes {path}\my_prefix_file
+```
+
+And from now on, there will be no need to transmit at each interaction these prefixes.
+
 ##### Authors:
 
 [Francesco Antoniazzi](mailto:francesco.antoniazzi@emse.fr)
