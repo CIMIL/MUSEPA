@@ -32,8 +32,12 @@ logger = logging.getLogger(__name__)
 def musepa_fixture(request):
     logger.info("Starting MUSEPA...")
     loop = asyncio.new_event_loop()
-    thread = Thread(
-        target=musepa, kwargs={"endpoint": request.param, "event_loop": loop})
+    if request.param == "fuseki":
+        thread = Thread(
+            target=musepa, kwargs={"endpoint": request.param, "event_loop": loop, "params": "http://localhost:3030/musepa"})
+    else:
+        thread = Thread(
+            target=musepa, kwargs={"endpoint": request.param, "event_loop": loop})
     thread.daemon = True
     thread.start()
 

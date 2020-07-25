@@ -18,7 +18,7 @@ logger = logging.getLogger("endpoint")
 logFormat = "%(levelname)s   %(asctime)-15s %(filename)s[%(lineno)d] : %(message)s"
 logging.basicConfig(level=logging.INFO, format=logFormat)
 
-AVAILABLE_ENDPOINTS = ["rdflib", "blazegraph"]
+AVAILABLE_ENDPOINTS = ["rdflib", "blazegraph", "fuseki"]
 
 
 def get_endpoint(id, params=None):
@@ -40,6 +40,9 @@ def get_endpoint(id, params=None):
 
     NotImplementedError
         if the 'id' is not contained in AVAILABLE_ENDPOINTS
+    
+    ValueError
+        if params value is None when Fuseki is called
 
     Returns
     -------
@@ -52,9 +55,18 @@ def get_endpoint(id, params=None):
         # instance is available
         blazegraph_ip = params if params else "http://localhost:9999/bigdata/sparql"
         if requests.get(blazegraph_ip).status_code != requests.codes.ok:
+            logger.critical("Blazegraph is not reachable at {}".format(blazegraph_ip))
             raise ConnectionError("Blazegraph is not reachable at {}".format(blazegraph_ip))
         return Blazegraph(blazegraph_ip)
-    # TODO Fuseki support
+    elif id.lower() == "fuseki":
+        if params is None:
+            # params will contain something like http://localhost:3030/{dataset}
+            logger.critical("For Fuseki endpoint, the endpoint parameter is compulsory")
+            raise ValueError("For Fuseki endpoint, the endpoint parameter is compulsory")
+        if requests.get(params).status_code != requests.codes.ok:
+            logger.critical("Fuseki is not reachable at {}".format(params))
+            raise ConnectionError("Fuseki is not reachable at {}".format(params))
+        return Fuseki(params)
     elif id.lower() == "rdflib":
         return RDFLibEndpoint()
     else:
@@ -171,6 +183,79 @@ class Blazegraph(RDFEndpoint):
             raise NotImplementedError(error)
         logger.info("Update request got status {}".format(r.status_code))
         return r, (r.status_code == requests.codes.ok)
+
+
+class Fuseki(RDFEndpoint):
+    def __init__(self, params):
+        """
+        Parameters
+        ----------
+        params : defines the uri for fuseki 'http://localhost:3030/{dataset}'
+            must not be None
+
+        Raises
+        ------
+        ValueError
+            if params is None
+        """
+        if params is None:
+            raise ValueError("Fuseki initialization params must not be None")
+        self.endpoint_uri = params
+
+    def query(self, sparql):
+        logger.debug("Sparql query to fuuseki at {}".format(self.endpoint_uri))
+        r = requests.post(
+            self.endpoint_uri + "/query",
+            headers={"Content-Type": "application/sparql-query"},
+            data=sparql)
+        logger.info("Query request got status {}".format(r.status_code))
+        return r.text.encode(), (r.status_code == requests.codes.ok)
+
+    def update(self, content, format="sparql"):
+        """Makes the update available in 'content' to the RDF endpoint.
+
+        Parameters
+        ----------
+        content : str
+            The update to be done
+
+        format : str, optional
+            defaults to 'sparql', this parameter tells the code how to
+            interpret the content string
+
+        Raises
+        ------
+        NotImplementedError
+            if the format is not one of 'sparql', 'ttl', 'n3'
+
+        Returns
+        -------
+        tuple (response, requests.status_code)
+            update output response, the status code
+        """
+        # content may be sparql or .ttl or .n3
+        l_format = format.lower()
+        if l_format == "sparql":
+            r = requests.post(
+                self.endpoint_uri + "/update",
+                headers={"Content-Type": "application/sparql-update"},
+                data=content)
+        elif l_format == "ttl" or l_format == "n3":
+            r = requests.post(
+                self.endpoint_uri + "/data",
+                headers={"Content-Type": "text/n3; charset=utf-8"},
+                data=content)
+        else:
+            error = "Format '{}' is unavailable".format(format)
+            logger.error(error)
+            raise NotImplementedError(error)
+        logger.info("Update request got status {}".format(r.status_code))
+        fail = True
+        try:
+            fail = r.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            logger.error(e)
+        return r, (fail is None)
 
 
 class RDFLibEndpoint(RDFEndpoint):

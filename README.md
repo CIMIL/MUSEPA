@@ -58,12 +58,24 @@ You should now see some helpful information that would help you to understand th
 $ python3 musepa.py 
 ```
 
+Have also a look to 3.3, for the usage of the `--endpoint-param` option.
+
 #### 3.2 MUSEPA on a rdflib endpoint
 
 There is nothing to install in this case. The drawback of using rdflib is that MUSEPA doesn't provide a way to store permanently triples when we use rdflib. This means that if you close MUSEPA, you lose your knowledge base.
 
 ```
 $ python musepa.py --endpoint rdflib
+```
+
+#### 3.2 MUSEPA on a Fuseki endpoint
+
+As we did for Blazegraph, a running Fuseki instance is needed in this case. Refer to [this](https://jena.apache.org/download/index.cgi) website.
+
+For the Fuseki case, it is necessary to introduce a new command line parameter, `--endpoint-param`. This parameter will be used to define the actual location of fuseki, included the dataset of interest in our application. Let's imagine that the dataset is called `musepa_dataset` and that Fuseki is running on `http://localhost:3030`: in this case, you'll run MUSEPA as the following:
+
+```
+$ python musepa.py --endpoint fuseki --endpoint-param http://localhost:3030/musepa
 ```
 
 ## 4. Using MUSEPA

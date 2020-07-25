@@ -219,7 +219,8 @@ class SubscriptionResource(coap.ObservableResource):
 
 def musepa(a4="default", a6="default", port=5683,  # custom ip:port address for musepa
            endpoint="blazegraph",  # endpoint type: choose between rdflib and Blazegraph
-           event_loop=asyncio.new_event_loop()):  # event loop: only if you know what you are doing
+           event_loop=asyncio.new_event_loop(),  # event loop: only if you know what you are doing
+           params=None):  # additional params to be used to parametrize the endpoint
     """Invokes musepa in a programmatic way (no CLI)
 
     Parameters
@@ -242,6 +243,10 @@ def musepa(a4="default", a6="default", port=5683,  # custom ip:port address for 
 
     event_loop = asyncio.Loop, optional
         defaults to asyncio.new_event_loop()
+
+    params = str, optional
+        defaults to None, it is useful to give programmatically params to the
+        endpoint instance that should be created
     """
     global subscription_store
     global prefix_container
@@ -251,7 +256,7 @@ def musepa(a4="default", a6="default", port=5683,  # custom ip:port address for 
     logging.basicConfig(level=logging.INFO, format=logFormat, filename="./musepa_log.log")
     logging.warning(subscription_store)
     asyncio.set_event_loop(event_loop)
-    main(a4, a6, port, endpoint=get_endpoint(endpoint), loop=event_loop)
+    main(a4, a6, port, endpoint=get_endpoint(endpoint, params), loop=event_loop)
 
 
 def main(addressV4, addressV6, port, endpoint, loop=asyncio.get_event_loop()):
@@ -308,6 +313,9 @@ if __name__ == '__main__':
         "--endpoint", metavar=("ENDPOINT_NAME"),
         default="blazegraph", choices=["blazegraph", "fuseki", "rdflib"],
         help="Choose the RDF endpoint to be used")
+    parser.add_argument(
+        "--endpoint_param", metavar=("ENDPOINT_PARAMETER"),
+        default=None, help="Add here a parameter for the endpoint. In case of Fuseki, for instance, provide here the uri like http://127.0.0.1:3030/_dataset_")
     parser.add_argument(
         "--prefixes", metavar=("PATH_TO_PREFIX_FILE"),
         default=None, help="If needed, add here the path to a file containing prefixes in a ttl format")
@@ -368,5 +376,6 @@ if __name__ == '__main__':
         prefix_container = Prefixes(args.prefixes)
     logger.info("MUSEPA configuration complete!")
 
-    main(addressV4, addressV6, args.port, get_endpoint(args.endpoint))
+    main(addressV4, addressV6, args.port,
+         get_endpoint(args.endpoint, params=args.endpoint_param))
     sys.exit(0)
