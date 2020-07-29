@@ -17,6 +17,7 @@ import json
 from aiocoap import resource as coap
 from aiocoap import Context, Message, NOT_FOUND, DELETED, BAD_REQUEST
 from aiocoap import BAD_OPTION, CHANGED, CREATED, FORBIDDEN
+from aiocoap.optiontypes import StringOption
 from os.path import exists, dirname
 from ipaddress import ip_address, IPv4Address
 from endpoint import get_endpoint
@@ -87,7 +88,13 @@ class SparqlUpdate(coap.Resource):
             # Blazegraph. For return codes, have a look to
             # https://tools.ietf.org/html/rfc7252#section-5.9
             coap_request_options = list(request.opt.option_list())
-            if len(coap_request_options) > 1:
+            code = True
+
+            # Here we need to check if there are more than one StringOption
+            # among the coap_request_options (i.e.: the format parameter)
+            stringOptionLen = sum(isinstance(i, StringOption) for i in coap_request_options)
+            if stringOptionLen > 1:
+                logger.warning("stringOptionLen > 1")
                 # dealing with file upload, like .ttl
                 # e.g. POST coap://HERE_THE_URI/sparql/update?format=ttl
                 for option in coap_request_options:
