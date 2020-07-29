@@ -19,6 +19,7 @@ callback_count = 0
 # this is necessary to deal with unobserve after ctrl-c
 global_context = None
 global_loop = None
+result_printer = logging.info
 
 
 def parse_verb(verb):
@@ -166,8 +167,8 @@ def main(args):
             else:
                 request = Message(code=verb, payload=payload, uri=args.address)
             response = await global_context.request(request).response
-            print("Response code: %s\nServer answer : %s\nServer info : %r " % (response.code, response.payload.decode(), request.remote))
-            # print(type(request.remote))
+            result_printer("Response code: %s\nServer answer : %s\nServer info : %r " % (response.code, response.payload.decode(), request.remote))
+            # result_printer(type(request.remote))
             return response
         return global_loop.run_until_complete(call())
     else:
@@ -221,5 +222,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     # initializing application loop for CLI calls of the script
     global_loop = asyncio.get_event_loop()
+
+    result_printer = print
 
     sys.exit(main(args))
