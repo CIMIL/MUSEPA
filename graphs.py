@@ -23,7 +23,7 @@ from aiocoap import Context, Message, GET, POST, PUT, DELETE
 context = None
 loop = asyncio.get_event_loop()
 
-MUSEPA_BASE_URL = "coap://127.0.0.1/{}"
+MUSEPA_BASE_URL = "coap://193.49.165.70/{}"
 
 # def create_files():
 #     for i in range(0, 60, 10):
@@ -51,41 +51,41 @@ def execute_tests_update(endpoint):
     loop = asyncio.get_event_loop()
     loop.run_until_complete(ctx())
 
-    if exists("./graph_tests/update.csv"):
-        print("csv file already exists")
-        open_mode = "a"
-    else:
-        print("csv file will be created")
-        open_mode = "w"
-
-    for i in range(0, 60, 10):
-        coapCall(
-                MUSEPA_BASE_URL.format("sparql/update"), verb="POST",
-                payload="delete where {?a ?b ?c}")
-        real_index = 1 if i == 0 else i
-        with open("./graph_tests/sparql_update_{}.sparql".format(real_index), "r") as u_file:
-            payload = u_file.read()
-
-            update_address = MUSEPA_BASE_URL.format("sparql/update")
+    open_mode = "a" if exists("./graph_tests/update.csv") else "w"
+    for address in [(MUSEPA_BASE_URL.format("sparql/update?format=ttl"), "./graph_tests/ttl_update_{}.ttl"), (MUSEPA_BASE_URL.format("sparql/update"), "./graph_tests/sparql_update_{}.sparql")]:
+        for i in range(0, 60, 10):
+            # deleting everything
             t = datetime.now()
-            r = loop.run_until_complete(call(payload, update_address))
+            r = loop.run_until_complete(call("delete where {?a ?b ?c}", "coap://localhost/sparql/update"))
             delta = datetime.now() - t
-            print("SPARQL {}: #execution time: {} ms ({})".format(real_index, delta.total_seconds()*1000, r.code))
+            #print("Delete all time: {} ms".format(delta.total_seconds()*1000))
+            
+            real_index = max(1, i)
+            with open(address[1].format(real_index), "r") as u_file:
+                payload = u_file.read()
 
-    for i in range(0, 60, 10):
-        coapCall(
-                MUSEPA_BASE_URL.format("sparql/update"), verb="POST",
-                payload="delete where {?a ?b ?c}")
+                t = datetime.now()
+                r = loop.run_until_complete(call(payload, address[0]))
+                delta = datetime.now() - t
+                if "ttl" in address[0]: 
+                    print("TTL {}: #execution time: {} ms ({})".format(real_index, delta.total_seconds()*1000, r.code))
+                else:
+                    print("SPARQL {}: #execution time: {} ms ({})".format(real_index, delta.total_seconds()*1000, r.code))
 
-        real_index = 1 if i == 0 else i
-        with open("./graph_tests/ttl_update_{}.ttl".format(real_index), "r") as u_file:
-            payload = u_file.read()
+    # for i in range(0, 60, 10):
+    #     coapCall(
+    #             MUSEPA_BASE_URL.format("sparql/update"), verb="POST",
+    #             payload="delete where {?a ?b ?c}")
 
-            update_address = MUSEPA_BASE_URL.format("sparql/update?format=ttl")
-            t = datetime.now()
-            r = loop.run_until_complete(call(payload, update_address))
-            delta = datetime.now() - t
-            print("TTL {}: #execution time: {} ms ({})".format(real_index, delta.total_seconds()*1000, r.code))
+    #     real_index = 1 if i == 0 else i
+    #     with open("./graph_tests/ttl_update_{}.ttl".format(real_index), "r") as u_file:
+    #         payload = u_file.read()
+
+    #         update_address = MUSEPA_BASE_URL.format("sparql/update?format=ttl")
+    #         t = datetime.now()
+    #         r = loop.run_until_complete(call(payload, update_address))
+    #         delta = datetime.now() - t
+    #         print("TTL {}: #execution time: {} ms ({})".format(real_index, delta.total_seconds()*1000, r.code))
 
         # with open("./graph_tests/update.csv", open_mode, newline='') as csvfile:
         #     graphwriter = csv.writer(csvfile)
