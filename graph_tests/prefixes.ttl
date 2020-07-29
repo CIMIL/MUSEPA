@@ -1,0 +1,1 @@
+@prefix ns: <http://my_prefix.org#> .

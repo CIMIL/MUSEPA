@@ -1,0 +1,3 @@
+insert data {
+ns:subject1 ns:predicate1 ns:object1 .
+}
