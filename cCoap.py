@@ -19,6 +19,9 @@ callback_count = 0
 # this is necessary to deal with unobserve after ctrl-c
 global_context = None
 global_loop = None
+
+# In general, when we call the functions in this script, the 
+# output will be logged at info level.
 result_printer = logging.info
 
 
@@ -34,6 +37,7 @@ def parse_verb(verb):
 
 
 def default_observation_callback(response):
+    # Default callback for subscription notification
     global callback_count
     print("/---------Start Callback #{}------------------------------------------\\".format(callback_count))
     print("Response: {}\nDecoded payload: {}".format(response, response.payload.decode()))
@@ -66,6 +70,7 @@ def coapCall(address, verb="GET", payload=b'', loop=None, context=None):
     -------
     CoAP call Response
     """
+    # This function is to be called by external scripts to perform a basic CoAP call.
     global global_context
     global global_loop
 
@@ -104,6 +109,7 @@ def coapObserve(address, payload=b'', callback=default_observation_callback,
     -------
     CoAP call Response
     """
+    # This function is to be called by external scripts to perform a CoAP observe call.
     global global_context
     global global_loop
 
@@ -134,6 +140,8 @@ def coapUnobserve(address, loop=None, context=None):
     -------
     CoAP call Response
     """
+    # This stops observing. Be careful that the context has to be the same as the one
+    # of the observe call, otherwise the unobserve won't be successful.
     global global_context
     global global_loop
 
@@ -151,43 +159,52 @@ def main(args):
     # notice that loop and context have already been initialized!
     logging.info(args)
 
+    # transforming the payload coming from CLI or function call in byte array
     payload = args.payload if args.payload == b'' else args.payload.encode()
 
     if not args.observe:
-        # CoAP resource regular method call
+        # CoAP resource regular method call (i.e. non observe request)
         verb = parse_verb(args.verb)
 
         async def call():
             global global_context
             if not global_context:
+                # creates a context if none is given
                 global_context = await Context.create_client_context()
             request = None
             if args.unobserve:
+                # in particular, this is the case of a stop-observing request
                 request = Message(code=GET, uri=args.address, observe=1)
             else:
+                # all other cases: CoAP GET, POST, PUT... with or without payload
                 request = Message(code=verb, payload=payload, uri=args.address)
             response = await global_context.request(request).response
             result_printer("Response code: %s\nServer answer : %s\nServer info : %r " % (response.code, response.payload.decode(), request.remote))
-            # result_printer(type(request.remote))
             return response
         return global_loop.run_until_complete(call())
     else:
+        # Observation case
         logging.info("Resource observer...")
 
         # CoAP resource observer
         async def call():
             global global_context
             if not global_context:
+                # creates a context if none is given
                 global_context = await Context.create_client_context()
+            # issuing the request
             request = Message(code=GET, payload=payload, uri=args.address, observe=0)
             obs_over = asyncio.Future()
 
             try:
+                # If no callback function is provided, we use the default one
                 cb = default_observation_callback if "callback" not in args else args.callback
                 remote_request = global_context.request(request)
                 remote_request.observation.register_callback(cb)
                 response = await remote_request.response
-
+                
+                # the first response usually do not trigger the callback.
+                # So we trigger it manually
                 cb(response)
                 
                 exit_reason = await obs_over
@@ -200,12 +217,16 @@ def main(args):
         try:
             return global_loop.run_until_complete(call())
         except KeyboardInterrupt:
+            # Once we stop the observation, we unobserve the resource
+            # This is indeed a recursion call, since we already programmed
+            # this case.
             coapUnobserve(args.address, loop=global_loop, context=global_context)
             logging.info("\nGot Ctrl-C: bye bye")
             return 1
 
 
 if __name__ == '__main__':
+    # CLI parameters, use -h or --help to get some friendly information
     parser = argparse.ArgumentParser(description="Tool to make coap calls!")
     parser.add_argument("-a", "--address", required=True)
     parser.add_argument(
@@ -223,6 +244,8 @@ if __name__ == '__main__':
     # initializing application loop for CLI calls of the script
     global_loop = asyncio.get_event_loop()
 
+    # if we are here, then this is a CLI. So, the output should be
+    # a standard output print.
     result_printer = print
 
     sys.exit(main(args))
