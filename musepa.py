@@ -28,7 +28,7 @@ from prefix import Prefixes
 logger = logging.getLogger(__name__)
 
 rdf_endpoint = None
-prefix_container = Prefixes()
+prefix_container = Prefixes(silent=True)
 
 # This global variable will act as storage of information about the
 # currently running subscriptions. The dictionary here will be formatted as
@@ -116,7 +116,7 @@ class SparqlUpdate(coap.Resource):
             if code:
                 for k in subscription_store.keys():
                     subscription_store[k]["resource"].rescheduleNow()
-                return Message(payload=b"Update Done!", code=CHANGED)
+                return Message(code=CHANGED)
             else:
                 return Message(code=BAD_REQUEST)
 
@@ -210,10 +210,12 @@ class SubscriptionResource(coap.ObservableResource):
                     # if it's the only client observing
                     root.remove_resource((self.alias,))
                     del subscription_store[self.alias]
-                    return Message(code=DELETED, payload=b'Resource deleted')
+                    return Message(code=DELETED)
+                    #return Message(code=DELETED, payload=b'Resource deleted')
                 else:
                     # if other clients are still observing
-                    return Message(code=CHANGED, payload=b'Observation stopped')
+                    return Message(code=CHANGED)
+                    #return Message(code=CHANGED, payload=b'Observation stopped')
             else:
                 # if the client is not observing, then he cannot delete!
                 return Message(code=FORBIDDEN)
@@ -278,9 +280,7 @@ def main(addressV4, addressV6, port, endpoint, loop=asyncio.get_event_loop()):
     root.add_resource(('sparql', 'query',), SparqlQuery()) 
     root.add_resource(('sparql', 'update',), SparqlUpdate())
     root.add_resource(('sparql','subscription',),SparqlSubscription())
-    # TODO prefix handshake to reduce overhead
     # TODO accept ttl file to make delete
-    # TODO do we really need an unsubscribe resource? see above
     # print(root.get_resources_as_linkheader())
 
     musepaAddress = ""
@@ -318,7 +318,7 @@ if __name__ == '__main__':
         default=5683, type=int, help="MUSEPA server port")
     parser.add_argument(
         "--endpoint", metavar=("ENDPOINT_NAME"),
-        default="blazegraph", choices=["blazegraph", "fuseki", "rdflib"],
+        default="rdflib", choices=["blazegraph", "fuseki", "rdflib"],
         help="Choose the RDF endpoint to be used")
     parser.add_argument(
         "--endpoint_param", metavar=("ENDPOINT_PARAMETER"),
