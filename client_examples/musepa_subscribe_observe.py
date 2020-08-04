@@ -9,6 +9,7 @@ import asyncio
 import argparse
 
 from aiocoap import Context, Message, GET, POST
+from os.path import isfile
 
 global_context = None
 global_loop = asyncio.get_event_loop()
@@ -62,11 +63,20 @@ async def unsubscription_call(address):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Tool to make queries to MUSEPA!")
     parser.add_argument("-a", "--address", required=True, help="Example: 127.0.0.1:5476 or 127.0.0.1 or 192.168.1.13...")
-    parser.add_argument("-p", "--payload", required=True)
+    parser.add_argument("-p", "--payload", required=True, help="""This parameter can be either a SPARQL query, 
+either a path to a file (containing a SPARQL query)""")
     args = parser.parse_args()
 
+    query = args.payload
+    if isfile(args.payload):
+        print("Detected file address...")
+        with open(args.payload, "r") as payload_file:
+            query = payload_file.read()
+    else:
+        print("Detected string payload (or non existing file)...")
+
     # first of all we subscribe
-    result = global_loop.run_until_complete(subscription_call(args.address, args.payload))
+    result = global_loop.run_until_complete(subscription_call(args.address, query))
     subscription_resource_hash = result.payload.decode()
 
     observe_address = "coap://{}/{}".format(args.address, subscription_resource_hash)
