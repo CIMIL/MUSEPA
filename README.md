@@ -255,6 +255,27 @@ And from now on, there will be no need to transmit at each interaction these pre
 
 See the client_examples folder for some easy-to-copy examples, to learn how to code your clients.
 
+You can do updates:
+```
+$ cd ./client_examples
+$ python musepa_update.py -a 127.0.0.1 -p "insert data {<http://a> <http://b> <http://c>}"
+$ python musepa_update.py -a 127.0.0.1 -p "<http://a> <http://b> <http://c>." --ttl
+$ python musepa_update.py -a 127.0.0.1 -p ./update_file_sparql_content.sparql
+$ python musepa_update.py -a 127.0.0.1 -p ./update_file_ttl_content.ttl --ttl
+```
+
+You can do queries:
+```
+$ python musepa_query.py -a 127.0.0.1 -p "select ?b ?c where {?a ?b ?c}"
+$ python musepa_query.py -a 127.0.0.1 -p ./query_file_sparql_content.sparql
+```
+
+You can do subscriptions:
+```
+$ python musepa_subscribe_observe.py -a 127.0.0.1 -p "select ?b ?c where {?a ?b ?c}"
+$ python musepa_subscribe_observe.py -a 127.0.0.1 -p ./query_file_sparql_content.sparql
+```
+
 ##### Authors:
 
 [Francesco Antoniazzi](mailto:francesco.antoniazzi@emse.fr)
