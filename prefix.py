@@ -26,7 +26,7 @@ class Prefixes():
         if path_to_file:
             if isfile(path_to_file):
                 # The prefix file has to be given in ttl format
-                prefix_regex = re.compile(r"@(?:prefix|PREFIX) +(?P<tag>[a-zA-Z]*) *: *<(?P<namespace>.+)> *\.")
+                prefix_regex = re.compile(r"@(?:prefix|PREFIX)[ \t]+(?P<tag>[a-zA-Z]*)[ \t]*:[ \t]*<(?P<namespace>.+)>[ \t]*\.")
                 with open(path_to_file, "r") as prefix_file:
                     pfxs = prefix_file.readlines()
                     
