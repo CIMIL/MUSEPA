@@ -18,7 +18,7 @@ from datetime import datetime
 from aiocoap import Context, Message, POST, GET
 
 from matplotlib import pyplot as plt
-from numpy import arange, array, mean, append, empty, asarray
+from numpy import arange, array, mean, append, empty, asarray, var
 
 context = None
 loop = asyncio.get_event_loop()
