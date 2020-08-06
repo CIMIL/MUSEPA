@@ -63,7 +63,7 @@ def execute_tests_update(endpoint, title):
             for i in range(0, 60, 10):
                 # deleting everything
                 t = datetime.now()
-                r = loop.run_until_complete(call("delete where {?a ?b ?c}", "coap://localhost/sparql/update"))
+                r = loop.run_until_complete(call("delete where {?a ?b ?c}", "coap://193.49.165.70/sparql/update"))
                 delta = datetime.now() - t
 
                 real_index = max(1, i)
@@ -107,8 +107,9 @@ def execute_tests_update(endpoint, title):
 
     plt.show()
 
+
 def execute_tests_query(endpoint, title):
-    loop = asyncio.get_event_loop()
+    #loop = asyncio.get_event_loop()
     loop.run_until_complete(ctx())
 
     ttl_time_matrix = []
@@ -121,14 +122,14 @@ def execute_tests_query(endpoint, title):
 
         for i in range(0, 60, 10):
             # deleting everything
-            r = loop.run_until_complete(call("delete where {?a ?b ?c}", "coap://localhost/sparql/update"))
+            r = loop.run_until_complete(call("delete where {?a ?b ?c}", "coap://193.49.165.70/sparql/update"))
             real_index = max(1, i)
             with open("./graph_tests/sparql_update_{}.sparql".format(real_index), "r") as u_file:
                 payload = u_file.read()
-            r = loop.run_until_complete(call(payload, "coap://localhost/sparql/update"))
+            r = loop.run_until_complete(call(payload, "coap://193.49.165.70/sparql/update"))
 
             t = datetime.now()
-            r = loop.run_until_complete(call("select * where {?a ?b ?c}", "coap://localhost/sparql/query", verb=GET))
+            r = loop.run_until_complete(call("select * where {?a ?b ?c}", "coap://193.49.165.70/sparql/query", verb=GET))
             delta = datetime.now() - t
             if repetition:
                 _range[int(i/10)] = len(r.payload)
@@ -142,35 +143,104 @@ def execute_tests_query(endpoint, title):
     return _range, sparql_time_matrix
 
 
+class Subscriber(Thread):
+    def __init__(self, payload):
+        super().__init__()
+        self.daemon = True
+        self.address = "coap://193.49.165.70/"+payload.decode()
+        self.start_time = None
+        self.delta = None
+        self.start()
+        self.event = Event()
+
+    def getDelta(self):
+        return self.delta
+
+    def update(self):
+        loop.run_until_complete(call("insert where {?a ?b ?c}", "coap://193.49.165.70/sparql/update"))
+        
+
+    def run(self):
+        loop = asyncio.new_event_loop()
+        async def call():
+            context = await Context.create_client_context()
+            request = Message(code=GET, payload=b'select * where {?a ?b ?c}', uri=self.address, observe=0)
+            obs_over = asyncio.Future()
+            remote_request = None
+            
+            def callback(data):
+                print("Callback!")
+            
+            try:
+                remote_request = context.request(request)
+                remote_request.observation.register_callback(callback)
+                response = await remote_request.response
+
+                callback(response)
+                
+                exit_reason = await obs_over
+                logging.warning(exit_reason)
+            finally:
+                if not remote_request.response.done():
+                    remote_request.response.cancel()
+                if not remote_request.observation.cancelled:
+                    remote_request.observation.cancel()
+            self.event.wait()
+            return
+        return loop.run_until_complete(call())
+
+    def stop(self):
+        self.event.set()
+
+
+
+def execute_tests_subscription():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(ctx())
+
+    r = loop.run_until_complete(call("delete where {?a ?b ?c}", "coap://193.49.165.70/sparql/update"))
+    r = loop.run_until_complete(call("select * where {?a ?b ?c}", "coap://193.49.165.70/sparql/subscription"))
+    print(r.payload)
+    for n_subscribers in range(1,101):
+        tasks = [Subscriber(r.payload) for i in range(n_subscribers)]
+        sleep(2)
+        tasks[0].update()
+        sleep(2)
+        for i in tasks:
+            i.stop()
+
+
 def main(args):
     #u_results = execute_tests_update(args.endpoint, args.title)
 
-    _r, rdflib = execute_tests_query("rdflib", "RDFlib")
-    input("insert a number to proceed")
-    _, blazegraph = execute_tests_query("blazegraph", "Blazegraph")
-    input("insert a number to proceed")
-    _, fuseki = execute_tests_query("fuseki", "Fuseki")
+    # _r, rdflib = execute_tests_query("rdflib", "RDFlib")
+    # input("insert a number to proceed")
+    # _, blazegraph = execute_tests_query("blazegraph", "Blazegraph")
+    # input("insert a number to proceed")
+    # _, fuseki = execute_tests_query("fuseki", "Fuseki")
     
-    w = 300
-    fig, ax = plt.subplots()
-    plt.bar(_r-w-100, rdflib, label="rdflib", width=w)
-    plt.bar(_r, blazegraph, label="blazegraph", width=w)
-    plt.bar(_r+w+100, fuseki, label="fuseki", width=w)
+    # w = 300
+    # fig, ax = plt.subplots()
+    # plt.bar(_r-w-100, rdflib, label="rdflib", width=w)
+    # plt.bar(_r, blazegraph, label="blazegraph", width=w)
+    # plt.bar(_r+w+100, fuseki, label="fuseki", width=w)
 
-    ax.set_title("Query time evaluation")
-    ax.set_ylabel('Query time in ms')
-    ax.set_xlabel('Length of "SELECT * WHERE {?a ?b ?c}" query response in bytes')
-    ax.set_xticks(_r)
-    ax.legend()
+    # ax.set_title("Query time evaluation")
+    # ax.set_ylabel('Query time in ms')
+    # ax.set_xlabel('Length of "SELECT * WHERE {?a ?b ?c}" query response in bytes')
+    # ax.set_xticks(_r)
+    # ax.legend()
 
-    for i, v in enumerate(rdflib):
-        plt.text(_r[i]-w-100, v + 0.01, round(v))
-    for i, v in enumerate(blazegraph):
-        plt.text(_r[i], v + 0.01, round(v))
-    for i, v in enumerate(fuseki):
-        plt.text(_r[i]+w+100, v + 0.01, round(v))
+    # for i, v in enumerate(rdflib):
+    #     plt.text(_r[i]-w-100, v + 0.01, round(v))
+    # for i, v in enumerate(blazegraph):
+    #     plt.text(_r[i], v + 0.01, round(v))
+    # for i, v in enumerate(fuseki):
+    #     plt.text(_r[i]+w+100, v + 0.01, round(v))
 
-    plt.show()
+    # plt.show()
+
+    execute_tests_subscription()
 
 
 if __name__ == "__main__":
