@@ -18,7 +18,7 @@ logging.basicConfig(format="%(levelname)s   %(asctime)-15s %(filename)s[%(lineno
 
 class Prefixes():
     """This class includes the utilities needed when the MUSEPA --prefixes option is called"""
-    def __init__(self, path_to_file=""):
+    def __init__(self, path_to_file="", silent=False):
         self._prefix_dict = {}
         self._ttl = ""
         self._sparql = ""
@@ -26,7 +26,7 @@ class Prefixes():
         if path_to_file:
             if isfile(path_to_file):
                 # The prefix file has to be given in ttl format
-                prefix_regex = re.compile(r"@(?:prefix|PREFIX) +(?P<tag>[a-zA-Z]*) *: *<(?P<namespace>.+)> *\.")
+                prefix_regex = re.compile(r"@(?:prefix|PREFIX)[ \t]+(?P<tag>[a-zA-Z]*)[ \t]*:[ \t]*<(?P<namespace>.+)>[ \t]*\.")
                 with open(path_to_file, "r") as prefix_file:
                     pfxs = prefix_file.readlines()
                     
@@ -42,7 +42,7 @@ class Prefixes():
                             self._sparql += "PREFIX {}: <{}>\n".format(group["tag"], group["namespace"])
             else:
                 raise ValueError("{} is not a file".format(path_to_file))
-        else:
+        elif not silent:
             logger.warning("No prefix file added")
 
     @property

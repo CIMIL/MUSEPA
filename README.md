@@ -40,7 +40,9 @@ We are now ready to run MUSEPA.
 
 ## 3. Running MUSEPA
 
-First of all, since MUSEPA works with an RDF store, you have to decide if to run Blazegraph, or to use rdflib to store your triples. If you want to use Blazegraph, go to section 3.1; otherwise, section 3.2 for rdflib.
+First of all, since MUSEPA works with an RDF store, you have to decide if to run Fuseki, or Blazegraph, or to use rdflib to store your triples. If you want to use Blazegraph, go to section 3.1; otherwise, section 3.2 for rdflib and section 3.3 for Fuseki.
+
+Consider that Blazegraph is available, but tests show that it is not the most performant RDF endpoint;
 
 #### 3.1 MUSEPA over a Blazegraph endpoint
 
@@ -49,13 +51,7 @@ Of course, you must run a Blazegraph instance. Please refer to [Blazegraph websi
 Once this is done, the first thing to try is:
 
 ```
-$ python3 musepa.py --help
-```
-
-You should now see some helpful information that would help you to understand the following call, that is meant to be _the standard way to call MUSEPA_ (i.e., with a blazegraph RDF endpoint running, and listening on localhost.
-
-```
-$ python3 musepa.py 
+$ python3 musepa.py --endpoint blazegraph --help
 ```
 
 Have also a look to 3.3, for the usage of the `--endpoint-param` option.
@@ -68,7 +64,13 @@ There is nothing to install in this case. The drawback of using rdflib is that M
 $ python musepa.py --endpoint rdflib
 ```
 
-#### 3.2 MUSEPA on a Fuseki endpoint
+This is equivalent to the following call, that is meant to be _the standard way to call MUSEPA_ (i.e., with an RDFlib endpoint running, and listening on localhost.
+
+```
+$ python3 musepa.py 
+```
+
+#### 3.3 MUSEPA on a Fuseki endpoint
 
 As we did for Blazegraph, a running Fuseki instance is needed in this case. Refer to [this](https://jena.apache.org/download/index.cgi) website.
 
@@ -248,6 +250,31 @@ $ python musepa.py --prefixes {path}\my_prefix_file
 ```
 
 And from now on, there will be no need to transmit at each interaction these prefixes.
+
+## Examples
+
+See the client_examples folder for some easy-to-copy examples, to learn how to code your clients.
+
+You can do updates:
+```
+$ cd ./client_examples
+$ python musepa_update.py -a 127.0.0.1 -p "insert data {<http://a> <http://b> <http://c>}"
+$ python musepa_update.py -a 127.0.0.1 -p "<http://a> <http://b> <http://c>." --ttl
+$ python musepa_update.py -a 127.0.0.1 -p ./update_file_sparql_content.sparql
+$ python musepa_update.py -a 127.0.0.1 -p ./update_file_ttl_content.ttl --ttl
+```
+
+You can do queries:
+```
+$ python musepa_query.py -a 127.0.0.1 -p "select ?b ?c where {?a ?b ?c}"
+$ python musepa_query.py -a 127.0.0.1 -p ./query_file_sparql_content.sparql
+```
+
+You can do subscriptions:
+```
+$ python musepa_subscribe_observe.py -a 127.0.0.1 -p "select ?b ?c where {?a ?b ?c}"
+$ python musepa_subscribe_observe.py -a 127.0.0.1 -p ./query_file_sparql_content.sparql
+```
 
 ##### Authors:
 

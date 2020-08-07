@@ -57,6 +57,7 @@ def get_endpoint(id, params=None):
         if requests.get(blazegraph_ip).status_code != requests.codes.ok:
             logger.critical("Blazegraph is not reachable at {}".format(blazegraph_ip))
             raise ConnectionError("Blazegraph is not reachable at {}".format(blazegraph_ip))
+        logger.info("Ready to work with Blazegraph!")
         return Blazegraph(blazegraph_ip)
     elif id.lower() == "fuseki":
         if params is None:
@@ -66,8 +67,10 @@ def get_endpoint(id, params=None):
         if requests.get(params).status_code != requests.codes.ok:
             logger.critical("Fuseki is not reachable at {}".format(params))
             raise ConnectionError("Fuseki is not reachable at {}".format(params))
+        logger.info("Ready to work with Fuseki!")
         return Fuseki(params)
     elif id.lower() == "rdflib":
+        logger.info("Ready to work with RDFLib!")
         return RDFLibEndpoint()
     else:
         error = "'{}' not found in the available RDF endpoints list".format(id)
