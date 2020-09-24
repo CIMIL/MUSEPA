@@ -64,3 +64,14 @@ class Prefixes():
             self._prefix_dict[tag] = namespace
             self._sparql += "PREFIX {}: <{}> \n".format(group["tag"], group["namespace"])
             self._ttl += "@prefix {}: <{}> .\n".format(group["tag"], group["namespace"])
+
+    def applyTo(self, content):
+        """
+        This function applies the prefixes to the 'content' variable. That is, if the content is 
+        'http://francesco#test' and there is a prefix 'ns: <http://francesco#>', the returned value 
+        will be 'ns:test'
+        """
+        n_content = content.decode()
+        for prefix, value in self._prefix_dict.items():
+            n_content = n_content.replace(value, prefix+':')
+        return n_content.encode()

@@ -66,7 +66,7 @@ class SparqlQuery(coap.Resource):
             prefixed_query = prefix_container.sparql + request.payload.decode()
             res, code = rdf_endpoint.query(prefixed_query)
             if code:
-                return Message(payload=res)
+                return Message(payload=prefix_container.applyTo(res))
             else:
                 return Message(code=BAD_REQUEST)
 
@@ -223,7 +223,7 @@ class SubscriptionResource(coap.ObservableResource):
             if client not in subscription_store[self.alias]["clients"]:
                 subscription_store[self.alias]["clients"].append(client)
             logger.debug(subscription_store)
-            return Message(payload=self.lastRes)
+            return Message(payload=prefix_container.applyTo(self.lastRes))
 
 
 def musepa(a4="default", a6="default", port=5683,  # custom ip:port address for musepa
