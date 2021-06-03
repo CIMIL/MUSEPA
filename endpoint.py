@@ -14,11 +14,19 @@ import logging
 from abc import ABC, abstractmethod
 from rdflib import Graph
 
+CONTENT_TYPE = "Content-Type"
+SPARQL = "sparql"
+BLAZEGRAPH_CONST = "http://localhost:9999/bigdata/sparql"
+
+RDFLIB = "rdflib"
+BLAZEGRAPH = "blazegraph"
+FUSEKI = "fuseki"
+
 logger = logging.getLogger("endpoint")
 logFormat = "%(levelname)s   %(asctime)-15s %(filename)s[%(lineno)d] : %(message)s"
 logging.basicConfig(level=logging.INFO, format=logFormat)
 
-AVAILABLE_ENDPOINTS = ["rdflib", "blazegraph", "fuseki"]
+AVAILABLE_ENDPOINTS = [RDFLIB, BLAZEGRAPH, FUSEKI]
 
 
 def get_endpoint(id, params=None):
@@ -50,26 +58,29 @@ def get_endpoint(id, params=None):
         an RDFEndpoint instance
     """
 
-    if id.lower() == "blazegraph":
+    if id.lower() == BLAZEGRAPH:
         # raising exception if blazegraph is requested, but no running
         # instance is available
-        blazegraph_ip = params if params else "http://localhost:9999/bigdata/sparql"
+        blazegraph_ip = params if params else BLAZEGRAPH_CONST
         if requests.get(blazegraph_ip).status_code != requests.codes.ok:
-            logger.critical("Blazegraph is not reachable at {}".format(blazegraph_ip))
-            raise ConnectionError("Blazegraph is not reachable at {}".format(blazegraph_ip))
+            errorMsg = "Blazegraph is not reachable at {}".format(blazegraph_ip)
+            logger.critical(errorMsg)
+            raise ConnectionError(errorMsg)
         logger.info("Ready to work with Blazegraph!")
         return Blazegraph(blazegraph_ip)
-    elif id.lower() == "fuseki":
+    elif id.lower() == FUSEKI:
         if params is None:
             # params will contain something like http://localhost:3030/{dataset}
-            logger.critical("For Fuseki endpoint, the endpoint parameter is compulsory")
-            raise ValueError("For Fuseki endpoint, the endpoint parameter is compulsory")
+            errorMsg = "For Fuseki endpoint, the endpoint parameter is compulsory"
+            logger.critical(errorMsg)
+            raise ValueError(errorMsg)
         if requests.get(params).status_code != requests.codes.ok:
-            logger.critical("Fuseki is not reachable at {}".format(params))
-            raise ConnectionError("Fuseki is not reachable at {}".format(params))
+            errorMsg = "Fuseki is not reachable at {}".format(params)
+            logger.critical(errorMsg)
+            raise ConnectionError(errorMsg)
         logger.info("Ready to work with Fuseki!")
         return Fuseki(params)
-    elif id.lower() == "rdflib":
+    elif id.lower() == RDFLIB:
         logger.info("Ready to work with RDFLib!")
         return RDFLibEndpoint()
     else:
@@ -134,7 +145,7 @@ class Blazegraph(RDFEndpoint):
             if None, defines the standard uri for blazegraph 'http://localhost:9999/bigdata/sparql'
             else it contains the appropriate uri
         """
-        self.endpoint_uri = params if params else "http://localhost:9999/bigdata/sparql"
+        self.endpoint_uri = params if params else BLAZEGRAPH_CONST
 
     def query(self, sparql):
         logger.debug("Sparql query to blazegraph at {}".format(self.endpoint_uri))
@@ -145,7 +156,7 @@ class Blazegraph(RDFEndpoint):
         logger.info("Query request got status {}".format(r.status_code))
         return r.text.encode(), (r.status_code == requests.codes.ok)
 
-    def update(self, content, format="sparql"):
+    def update(self, content, format=SPARQL):
         """Makes the update available in 'content' to the RDF endpoint.
 
         Parameters
@@ -169,17 +180,17 @@ class Blazegraph(RDFEndpoint):
         """
         # content may be sparql or .ttl or .n3
         l_format = format.lower()
-        if l_format == "sparql":
+        if l_format == SPARQL:
             r = requests.post(self.endpoint_uri, params={"update": content})
         elif l_format == "ttl":
             r = requests.post(
                 self.endpoint_uri,
-                headers={"Content-Type": "application/x-turtle"},
+                headers={CONTENT_TYPE: "application/x-turtle"},
                 data=content)
         elif l_format == "n3":
             r = requests.post(
                 self.endpoint_uri,
-                headers={"Content-Type": "text/rdf+n3"}, data=content)
+                headers={CONTENT_TYPE: "text/rdf+n3"}, data=content)
         else:
             error = "Format '{}' is unavailable".format(format)
             logger.error(error)
@@ -206,15 +217,15 @@ class Fuseki(RDFEndpoint):
         self.endpoint_uri = params
 
     def query(self, sparql):
-        logger.debug("Sparql query to fuuseki at {}".format(self.endpoint_uri))
+        logger.debug("Sparql query to fuseki at {}".format(self.endpoint_uri))
         r = requests.post(
             self.endpoint_uri + "/query",
-            headers={"Content-Type": "application/sparql-query"},
+            headers={CONTENT_TYPE: "application/sparql-query"},
             data=sparql)
         logger.info("Query request got status {}".format(r.status_code))
         return r.text.encode(), (r.status_code == requests.codes.ok)
 
-    def update(self, content, format="sparql"):
+    def update(self, content, format=SPARQL):
         """Makes the update available in 'content' to the RDF endpoint.
 
         Parameters
@@ -238,15 +249,15 @@ class Fuseki(RDFEndpoint):
         """
         # content may be sparql or .ttl or .n3
         l_format = format.lower()
-        if l_format == "sparql":
+        if l_format == SPARQL:
             r = requests.post(
                 self.endpoint_uri + "/update",
-                headers={"Content-Type": "application/sparql-update"},
+                headers={CONTENT_TYPE: "application/sparql-update"},
                 data=content)
         elif l_format == "ttl" or l_format == "n3":
             r = requests.post(
                 self.endpoint_uri + "/data",
-                headers={"Content-Type": "text/n3; charset=utf-8"},
+                headers={CONTENT_TYPE: "text/n3; charset=utf-8"},
                 data=content)
         else:
             error = "Format '{}' is unavailable".format(format)
@@ -295,9 +306,9 @@ class RDFLibEndpoint(RDFEndpoint):
             return None, False
         return query, True
 
-    def update(self, content, format="sparql"):
+    def update(self, content, format=SPARQL):
         try:
-            if format == "sparql":
+            if format == SPARQL:
                 update = self.graph.update(content)
             else:
                 update = self.graph.parse(data=content, format=format)

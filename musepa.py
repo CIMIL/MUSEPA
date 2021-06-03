@@ -25,6 +25,11 @@ from hashlib import md5
 from prefix import Prefixes
 
 
+SPARQL = "sparql"
+CLIENTS = "clients"
+RESOURCE = "resource"
+DEFAULT = "default"
+
 logger = logging.getLogger(__name__)
 
 rdf_endpoint = None
@@ -58,8 +63,7 @@ class SparqlQuery(coap.Resource):
     # sparql SELECT as payload.
     async def render_get(self, request):
         global rdf_endpoint
-        logger.debug("Request from {}\nRequest payload: {}".format(
-            request.remote.hostinfo, request.payload))
+        logger.debug(f"Request from {request.remote.hostinfo}\nRequest payload: {request.payload}")
         if request.payload == b'':
             return Message(code=BAD_OPTION)
         else:
@@ -78,8 +82,7 @@ class SparqlUpdate(coap.Resource):
     # ttl or n3 format
     async def render_post(self, request):
         global rdf_endpoint
-        logger.debug("Request from {}\nRequest payload: {}".format(
-            request.remote.hostinfo, request.payload))
+        logger.debug(f"Request from {request.remote.hostinfo}\nRequest payload: {request.payload}")
 
         if request.payload == b'':
             return Message(code=BAD_OPTION)
@@ -100,22 +103,22 @@ class SparqlUpdate(coap.Resource):
                 for option in coap_request_options:
                     parse_option = str(option).split("=")
                     if len(parse_option) > 1 and "format" == parse_option[0]:
-                        logger.info("Requested option {} file".format(parse_option[1]))
+                        logger.info(f"Requested option {parse_option[1]} file")
                         if hasattr(prefix_container, parse_option[1]):
                             prefixed_update = getattr(prefix_container, parse_option[1]) + request.payload.decode()
                         else:
-                            logger.warning("Unable to find {} format...".format(parse_option[1]))
+                            logger.warning(f"Unable to find {parse_option[1]} format...")
                             prefixed_update = request.payload.decode()
                         res, code = rdf_endpoint.update(prefixed_update, format=parse_option[1])
-                        logger.debug("Result: {}; code: {}".format(res, code))
+                        logger.debug(f"Result: {res}; code: {code}")
                         break
             else:
                 prefixed_update = prefix_container.sparql + request.payload.decode()
                 res, code = rdf_endpoint.update(prefixed_update)
-                logger.debug("Result: {}; code: {}".format(res, code))
+                logger.debug(f"Result: {res}; code: {code}")
             if code:
                 for k in subscription_store.keys():
-                    subscription_store[k]["resource"].rescheduleNow()
+                    subscription_store[k][RESOURCE].rescheduleNow()
                 return Message(code=CHANGED)
             else:
                 return Message(code=BAD_REQUEST)
@@ -130,8 +133,7 @@ class SparqlSubscription(coap.Resource):
     async def render_post(self, request):
         global root
         global subscription_store
-        logger.debug("Request from {}\nRequest payload: {}".format(
-            request.remote.hostinfo, request.payload))
+        logger.debug(f"Request from {request.remote.hostinfo}\nRequest payload: {request.payload}")
         if request.payload == b'':
             return Message(code=BAD_OPTION)
         else:
@@ -141,9 +143,9 @@ class SparqlSubscription(coap.Resource):
                 decoded_payload = request.payload.decode()
                 new_res = SubscriptionResource(hash_alias, decoded_payload)
                 subscription_store[hash_alias] = {
-                    "sparql": decoded_payload,
-                    "resource": new_res,
-                    "clients": []}
+                    SPARQL: decoded_payload,
+                    RESOURCE: new_res,
+                    CLIENTS: []}
                 root.add_resource((hash_alias,), new_res)
                 logging.warning(root.get_resources_as_linkheader())
             return Message(payload=hash_alias.encode(), code=CREATED)
@@ -155,18 +157,16 @@ class SparqlSubscription(coap.Resource):
         Otherwise, it sends a view of global dictionary subscription_store
         """
         global subscription_store
-        logger.debug("Request from {}\nRequest payload: {}".format(
-            request.remote.hostinfo, request.payload))
+        logger.debug(f"Request from {request.remote.hostinfo}\nRequest payload: {request.payload}")
         decoded_payload = request.payload.decode()       
 
         if decoded_payload == '':
             return Message(code=NOT_FOUND)
         elif decoded_payload in subscription_store.keys():
             informations = {
-                "sparql": subscription_store[decoded_payload]["sparql"],
-                "clients": len(subscription_store[decoded_payload]["clients"])}
-            logger.debug("Subscription {} information: {}".format(
-                decoded_payload, informations))
+                SPARQL: subscription_store[decoded_payload][SPARQL],
+                CLIENTS: len(subscription_store[decoded_payload][CLIENTS])}
+            logger.debug(f"Subscription {decoded_payload} information: {informations}")
             return Message(payload=json.dumps(informations).encode())
         else:
             return Message(code=BAD_REQUEST)
@@ -202,11 +202,11 @@ class SubscriptionResource(coap.ObservableResource):
         client = request.remote.hostinfo
         logger.info("observing client: {}".format(client))
         if request.opt.observe == 1:
-            if client in subscription_store[self.alias]["clients"]:
+            if client in subscription_store[self.alias][CLIENTS]:
                 # if the requesting client is observing this resource
-                subscription_store[self.alias]["clients"].remove(client)
-                logger.warning("{} stopped observing {} resource".format(client, self.alias))
-                if len(subscription_store[self.alias]["clients"]) == 0:
+                subscription_store[self.alias][CLIENTS].remove(client)
+                logger.warning(f"{client} stopped observing {self.alias} resource")
+                if len(subscription_store[self.alias][CLIENTS]) == 0:
                     # if it's the only client observing
                     root.remove_resource((self.alias,))
                     del subscription_store[self.alias]
@@ -220,13 +220,13 @@ class SubscriptionResource(coap.ObservableResource):
                 # if the client is not observing, then he cannot delete!
                 return Message(code=FORBIDDEN)
         else:
-            if client not in subscription_store[self.alias]["clients"]:
-                subscription_store[self.alias]["clients"].append(client)
+            if client not in subscription_store[self.alias][CLIENTS]:
+                subscription_store[self.alias][CLIENTS].append(client)
             logger.debug(subscription_store)
             return Message(payload=prefix_container.applyTo(self.lastRes))
 
 
-def musepa(a4="default", a6="default", port=5683,  # custom ip:port address for musepa
+def musepa(a4=DEFAULT, a6=DEFAULT, port=5683,  # custom ip:port address for musepa
            endpoint="blazegraph",  # endpoint type: choose between rdflib and Blazegraph
            event_loop=asyncio.new_event_loop(),  # event loop: only if you know what you are doing
            params=None):  # additional params to be used to parametrize the endpoint
@@ -277,27 +277,27 @@ def main(addressV4, addressV6, port, endpoint, loop=asyncio.get_event_loop()):
     root = coap.Site()
     root.add_resource((".well-known", "core"), coap.WKCResource(root.get_resources_as_linkheader))
     root.add_resource(('info',), musepaInfo())
-    root.add_resource(('sparql', 'query',), SparqlQuery()) 
-    root.add_resource(('sparql', 'update',), SparqlUpdate())
-    root.add_resource(('sparql','subscription',),SparqlSubscription())
+    root.add_resource((SPARQL, 'query',), SparqlQuery()) 
+    root.add_resource((SPARQL, 'update',), SparqlUpdate())
+    root.add_resource((SPARQL,'subscription',),SparqlSubscription())
     # TODO accept ttl file to make delete
     # print(root.get_resources_as_linkheader())
 
     musepaAddress = ""
-    if addressV4 == "default":
+    if addressV4 == DEFAULT:
         asyncio.Task(Context.create_server_context(root))
         print("This CoAP server is running on default params")
         musepaAddress = "coap://localhost"
     else:
         asyncio.Task(Context.create_server_context(root, bind=(addressV6, port)))
-        print("This CoAP server is running on {}:{}".format(addressV4, port))
-        musepaAddress = "coap://{}:{}".format(addressV4,port)
-    print("\n/-------------------------------------------------------\\")
-    print("| Information: \t{}/info".format(musepaAddress))
-    print("| Query: \t{}/sparql/query".format(musepaAddress))
-    print("| Update: \t{}/sparql/update".format(musepaAddress))
-    print("| Subscribe: \t{}/sparql/subscription".format(musepaAddress))
-    print("\\-------------------------------------------------------/")
+        print(f"This CoAP server is running on {addressV4}:{port}")
+        musepaAddress = f"coap://{addressV4}:{port}"
+    print(f"""\n/-------------------------------------------------------\\
+| Information: \t{musepaAddress}/info
+| Query: \t{musepaAddress}/sparql/query
+| Update: \t{musepaAddress}/sparql/update
+| Subscribe: \t{musepaAddress}/sparql/subscription
+\\-------------------------------------------------------/""")
 
     logger.info("waiting for client action...")
     try:
@@ -312,7 +312,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="MUSEPA server")
     parser.add_argument(
         "--address", metavar=("MUSEPA_ADDRESS"), 
-        default="default", type=str, help="MUSEPA server ip address")
+        default=DEFAULT, type=str, help="MUSEPA server ip address")
     parser.add_argument(
         "--port", metavar=("MUSEPA_PORT"), 
         default=5683, type=int, help="MUSEPA server port")
@@ -363,9 +363,9 @@ if __name__ == '__main__':
         coapLogger = logging.getLogger("coap-server.responder").setLevel(logging.WARNING)
 
     # checks for non-default ip and port
-    addressV4 = "default"
-    addressV6 = "default"
-    if args.address != "default":
+    addressV4 = DEFAULT
+    addressV6 = DEFAULT
+    if args.address != DEFAULT:
         try:
             address = ip_address(args.address)
         except ValueError:

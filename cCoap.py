@@ -26,26 +26,22 @@ result_printer = logging.info
 
 
 def parse_verb(verb):
-    if verb == "GET":
-        return GET
-    elif verb == "POST":
-        return POST
-    elif verb == "PUT":
-        return PUT
-    else:
-        return DELETE
+    for v in [GET, POST, PUT]:
+        if verb == str(v):
+            return v
+    return DELETE
 
 
 def default_observation_callback(response):
     # Default callback for subscription notification
     global callback_count
-    print("/---------Start Callback #{}------------------------------------------\\".format(callback_count))
-    print("Response: {}\nDecoded payload: {}".format(response, response.payload.decode()))
-    print("/---------End Callback #{}------------------------------------------".format(callback_count))
+    print(f"""/---------Start Callback #{callback_count}------------------------------------------\\
+Response: {response}\nDecoded payload: {response.payload.decode()}
+/---------End Callback #{callback_count}------------------------------------------""")
     callback_count += 1
 
 
-def coapCall(address, verb="GET", payload=b'', loop=None, context=None):
+def coapCall(address, verb=str(GET), payload=b'', loop=None, context=None):
     """Makes a CoAP call.
 
     Parameters
@@ -230,7 +226,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Tool to make coap calls!")
     parser.add_argument("-a", "--address", required=True)
     parser.add_argument(
-        "--verb", default="GET", choices=["GET", "POST", "PUT", "DELETE"],
+        "--verb", default=str(GET), choices=[str(GET), str(POST), str(PUT), str(DELETE)],
         help="Ignored when -o or --observe are used")
     parser.add_argument("-p", "--payload", default=b'')
     parser.add_argument(

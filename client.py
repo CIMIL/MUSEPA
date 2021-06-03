@@ -35,18 +35,19 @@ from aiocoap import *
 
 from cCoap import coapCall
 CMINOR_BASE_URL = "coap://127.0.0.1/{}"
+SPARQL_SUBSCRIPTION = "sparql/subscription"
 
 def update(args):
     logging.info("Update process...")
-    coapCall(CMINOR_BASE_URL.format("sparql/update"),verb="POST", payload=args.payload)
+    coapCall(CMINOR_BASE_URL.format("sparql/update"), verb=str(POST), payload=args.payload)
 
 def query(args):    
     logging.info("Query process...")
-    coapCall(CMINOR_BASE_URL.format("sparql/query"),verb="GET", payload=args.payload)
+    coapCall(CMINOR_BASE_URL.format("sparql/query"), verb=str(GET), payload=args.payload)
 
 def info():    
     logging.info("Query process...")
-    coapCall(CMINOR_BASE_URL.format("sparql/subscription"),verb="GET", payload="8d1c4")
+    coapCall(CMINOR_BASE_URL.format(SPARQL_SUBSCRIPTION), verb=str(GET), payload="8d1c4")
 
 class Subs_Obs():
     '''
@@ -55,7 +56,7 @@ class Subs_Obs():
     '''
     def subscribe(self, args):
         logging.info("Subscribe process...")
-        hashed = coapCall(CMINOR_BASE_URL.format("sparql/subscription"),verb="POST", payload=args.payload).payload.decode()
+        hashed = coapCall(CMINOR_BASE_URL.format(SPARQL_SUBSCRIPTION), verb=str(POST), payload=args.payload).payload.decode()
  
         
         self.observal(hashed)
@@ -68,7 +69,7 @@ class Subs_Obs():
 
         async def obs():
                 context = await Context.create_client_context()
-                request = Message(code=GET, uri='coap://127.0.0.1/{}'.format(self.new), observe=0)  
+                request = Message(code=GET, uri=CMINOR_BASE_URL.format(self.new), observe=0)  
                 obs_over = asyncio.Future()
 
                 try:

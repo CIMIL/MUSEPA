@@ -13,6 +13,9 @@ import re
 
 from os.path import isfile
 
+TAG = "tag"
+NAMESPACE = "namespace"
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="%(levelname)s   %(asctime)-15s %(filename)s[%(lineno)d] : %(message)s")
 
@@ -37,9 +40,9 @@ class Prefixes():
                         if group is None:
                             logger.error("No match in {}".format(path_to_file))
                         else:
-                            logger.debug("{}: {}".format(group["tag"], group["namespace"]))
-                            self._prefix_dict[group["tag"]] = group["namespace"]
-                            self._sparql += "PREFIX {}: <{}>\n".format(group["tag"], group["namespace"])
+                            logger.debug(f"{group[TAG]}: {group[NAMESPACE]}")
+                            self._prefix_dict[group[TAG]] = group[NAMESPACE]
+                            self._sparql += f"PREFIX {group[TAG]}: <{group[NAMESPACE]}>\n"
             else:
                 raise ValueError("{} is not a file".format(path_to_file))
         elif not silent:
@@ -62,8 +65,8 @@ class Prefixes():
             raise ValueError("Duplicate prefix request")
         else:
             self._prefix_dict[tag] = namespace
-            self._sparql += "PREFIX {}: <{}> \n".format(group["tag"], group["namespace"])
-            self._ttl += "@prefix {}: <{}> .\n".format(group["tag"], group["namespace"])
+            self._sparql += f"PREFIX {group[TAG]}: <{group[NAMESPACE]}> \n"
+            self._ttl += f"@prefix {group[TAG]}: <{group[NAMESPACE]}> .\n"
 
     def applyTo(self, content):
         """
@@ -71,7 +74,9 @@ class Prefixes():
         'http://francesco#test' and there is a prefix 'ns: <http://francesco#>', the returned value 
         will be 'ns:test'
         """
+        #if content:
         n_content = content.decode()
         for prefix, value in self._prefix_dict.items():
             n_content = n_content.replace(value, prefix+':')
         return n_content.encode()
+        #return ""
