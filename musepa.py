@@ -13,6 +13,8 @@ import logging
 import argparse
 import asyncio
 import json
+import time
+import csv
 
 from aiocoap import resource as coap
 from aiocoap import Context, Message, NOT_FOUND, DELETED, BAD_REQUEST
@@ -31,6 +33,7 @@ RESOURCE = "resource"
 DEFAULT = "default"
 
 logger = logging.getLogger(__name__)
+START_TIME = time.time()
 
 rdf_endpoint = None
 prefix_container = Prefixes(silent=True)
@@ -82,8 +85,11 @@ class SparqlUpdate(coap.Resource):
     # ttl or n3 format
     async def render_post(self, request):
         global rdf_endpoint
+        global START_TIME
+        global TNUM
         logger.debug(f"Request from {request.remote.hostinfo}\nRequest payload: {request.payload}")
 
+        START_TIME = time.time()
         if request.payload == b'':
             return Message(code=BAD_OPTION)
         else:
@@ -116,9 +122,16 @@ class SparqlUpdate(coap.Resource):
                 prefixed_update = prefix_container.sparql + request.payload.decode()
                 res, code = rdf_endpoint.update(prefixed_update)
                 logger.debug(f"Result: {res}; code: {code}")
+            update_time = time.time() - START_TIME
+            res, code = rdf_endpoint.query("select (count(*) as ?triples) where {?a ?b ?c}")
+            TNUM = int(json.loads(res.decode())["results"]["bindings"][0]["triples"]["value"])
+            print(TNUM)
+            if ((TNUM>0) and (request.payload.decode() != "delete where {?a ?b ?c}")):
+                UPDATEWRITER.writerow([len(subscription_store.keys()), TNUM, update_time])
             if code:
+                START_TIME = time.time()
                 for k in subscription_store.keys():
-                    subscription_store[k][RESOURCE].rescheduleNow()
+                    subscription_store[k][RESOURCE].rescheduleNow()    
                 return Message(code=CHANGED)
             else:
                 return Message(code=BAD_REQUEST)
@@ -186,12 +199,17 @@ class SubscriptionResource(coap.ObservableResource):
         self.notify()
 
     def notify(self):
+        global subscription_store
+        global START_TIME
         new, code = rdf_endpoint.query(self.content)
         logger.info("{} notify method called!".format(self.alias))
         if new != self.lastRes:
             # only if old results differs from the new ones
             self.lastRes = new
             self.updated_state()
+        full_notification_time = time.time() - START_TIME
+        if len(json.loads(new.decode())["results"]["bindings"])>0:
+            NOTIFWRITER.writerow([TNUM, len(subscription_store.keys()), full_notification_time])
 
     def rescheduleNow(self):
         # TODO verify if this method is necessary, or if we can directly call self.notify instead
@@ -383,6 +401,16 @@ if __name__ == '__main__':
         prefix_container = Prefixes(args.prefixes)
     logger.info("MUSEPA configuration complete!")
 
+    UPDATETIMEFILE = open("./test/update_times.csv", "a")
+    NOTIFTIMEFILE = open("./test/notif_times.csv", "a")
+    UPDATEWRITER = csv.writer(UPDATETIMEFILE)
+    NOTIFWRITER = csv.writer(NOTIFTIMEFILE)
+    NOTIFWRITER.writerow(["triples", "subscriptions", "time"])
+
     main(addressV4, addressV6, args.port,
          get_endpoint(args.endpoint, params=args.endpoint_param))
+
+    UPDATETIMEFILE.close()
+    NOTIFTIMEFILE.close()
+
     sys.exit(0)

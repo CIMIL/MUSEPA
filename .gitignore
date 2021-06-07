@@ -132,3 +132,6 @@ dmypy.json
 
 # ide environment
 .vscode/
+
+
+triple_background/*.ttl

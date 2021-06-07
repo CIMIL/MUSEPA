@@ -13,10 +13,11 @@ from os.path import isfile
 
 global_context = None
 global_loop = asyncio.get_event_loop()
+TOGGLE_NOTIF = False
 
 
 def notification_callback(result):
-    print("This is a notification!\nNotification body: {}\n\n".format(result.payload))
+    print("This is a notification!\n")
 
 
 async def subscription_call(address, payload):
@@ -31,6 +32,7 @@ async def subscription_call(address, payload):
 
 async def observation_call(address):
     global global_context
+    global TOGGLE_NOTIF
 
     request = Message(code=GET, payload=b'', uri=address, observe=0)
     obs_over = asyncio.Future()
@@ -42,15 +44,19 @@ async def observation_call(address):
         
         # the first response usually do not trigger the callback.
         # So we trigger it manually
-        notification_callback(response)
+        #notification_callback(response)
         
-        exit_reason = await obs_over
-        print(exit_reason)
+        #exit_reason = await obs_over
     finally:
         if not remote_request.response.done():
             remote_request.response.cancel()
         if not remote_request.observation.cancelled:
             remote_request.observation.cancel()
+    
+    if TOGGLE_NOTIF:
+        raise KeyboardInterrupt
+    else:
+        TOGGLE_NOTIF = True
 
 
 async def unsubscription_call(address):
@@ -60,7 +66,7 @@ async def unsubscription_call(address):
     return response
 
 
-def main(args):
+def main(args, query):
     # first of all we subscribe
     result = global_loop.run_until_complete(subscription_call(args.address, query))
     subscription_resource_hash = result.payload.decode()
@@ -75,7 +81,6 @@ def main(args):
         # This is indeed a recursion call, since we already programmed
         # this case.
         result = global_loop.run_until_complete(unsubscription_call(observe_address))
-        print(result)
 
 
 if __name__ == '__main__':
@@ -93,6 +98,6 @@ either a path to a file (containing a SPARQL query)""")
     else:
         print("Detected string payload (or non existing file)...")
 
-    main(args)
+    main(None, args, query)
 
     

@@ -74,9 +74,9 @@ class Prefixes():
         'http://francesco#test' and there is a prefix 'ns: <http://francesco#>', the returned value 
         will be 'ns:test'
         """
-        #if content:
-        n_content = content.decode()
-        for prefix, value in self._prefix_dict.items():
-            n_content = n_content.replace(value, prefix+':')
-        return n_content.encode()
-        #return ""
+        if content:
+            n_content = content.decode()
+            for prefix, value in self._prefix_dict.items():
+                n_content = n_content.replace(value, prefix+':')
+            return n_content.encode()
+        return ""
