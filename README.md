@@ -278,6 +278,6 @@ $ python musepa_subscribe_observe.py -a 127.0.0.1 -p ./query_file_sparql_content
 
 ##### Authors:
 
-[Francesco Antoniazzi](mailto:francesco.antoniazzi@emse.fr)
+[Francesco Antoniazzi](mailto:antoniazzi.francesco1991@gmail.com)
 
 [Jehad Melad](jehad.melad@emse.fr)
